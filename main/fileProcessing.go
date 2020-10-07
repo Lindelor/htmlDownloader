@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"os"
 	"strings"
+	"sync"
 )
 
 /*Функция для создания директорий, принимает на вход имя логфайла и путь к создаваемой директории*/
@@ -32,18 +33,25 @@ func urlToName(siteUrl string) string {
 /*Функция считывает с файла все строки и преобразует в URL, принимает путь до файла*/
 func fileToUrlSlice(filePath string) ([]string, error) {
 	var urlSlice = []string{}
+	var waitGroup sync.WaitGroup
 
 	file, err := os.Open(filePath)
-	defer file.Close()
 	if err != nil {
 		return []string{}, err
 	}
+	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
-		urlSlice = append(urlSlice, scanner.Text())
+		waitGroup.Add(1)
+		go func(scan string) {
+			defer waitGroup.Done()
+			urlSlice = append(urlSlice, scan)
+		}(scanner.Text())
 	}
+
+	waitGroup.Wait()
 
 	if err := scanner.Err(); err != nil {
 		return []string{}, err
